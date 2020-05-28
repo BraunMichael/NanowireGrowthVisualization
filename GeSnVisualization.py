@@ -16,6 +16,15 @@ def makeMPLColormap(numColors, rotation, light, hue, colorMapDarkValue):
     return mapMPL
 
 
+def lowerAndUpperLims(columnTitle, percentRangeOverdraw, dataframeList):
+    colMin = min([dataFrame[columnTitle].min() for dataFrame in dataframeList])
+    colMax = max([dataFrame[columnTitle].max() for dataFrame in dataframeList])
+    colRange = colMax - colMin
+    lowerLim = colMin - percentRangeOverdraw * colRange
+    upperLim = colMax + percentRangeOverdraw * colRange
+    return lowerLim, upperLim
+
+
 SMALL_SIZE = 18
 MEDIUM_SIZE = 20
 BIGGER_SIZE = 22
@@ -71,29 +80,16 @@ colorbarMax = df[SnSurfaceStr].max()
 
 percentRangeOverdraw = 0.2  # add 20% of range on each side for circle's to fit nicely
 
-temperatureMin = df_Center["Temperature"].min()
-temperatureMax = df_Center["Temperature"].max()
-temperatureRange = temperatureMax - temperatureMin
-lowerXLim = temperatureMin - percentRangeOverdraw * temperatureRange
-upperXLim = temperatureMax + percentRangeOverdraw * temperatureRange
 
-nvMin = df_Center["NV"].min()
-nvMax = df_Center["NV"].max()
-nvRange = nvMax - nvMin
-lowerYLimNV = nvMin - percentRangeOverdraw * nvRange
-upperYLimNV = nvMax + percentRangeOverdraw * nvRange
 
-germaneFlowMin = df_Center["Germane Flow"].min()
-germaneFlowMax = df_Center["Germane Flow"].max()
-germaneFlowRange = germaneFlowMax - germaneFlowMin
-lowerYLimGermaneFlow = germaneFlowMin - percentRangeOverdraw * germaneFlowRange
-upperYLimGermaneFlow = germaneFlowMax + percentRangeOverdraw * germaneFlowRange
 
-wireDensityMin = min(df_Center["Wire Density"].min(), df_Andrew["Wire Density"].min(), df_Reflectometry["Wire Density"].min())
-wireDensityMax = max(df_Center["Wire Density"].max(), df_Andrew["Wire Density"].max(), df_Reflectometry["Wire Density"].max())
-wireDensityRange = wireDensityMax - wireDensityMin
-lowerYLimWireDensity = wireDensityMin - percentRangeOverdraw * wireDensityRange
-upperYLimWireDensity = wireDensityMax + percentRangeOverdraw * wireDensityRange
+
+dataframeList = [df_Center, df_Andrew, df_Reflectometry]
+lowerXLim, upperXLim = lowerAndUpperLims('Temperature', percentRangeOverdraw, dataframeList)
+lowerYLimNV, upperYLimNV = lowerAndUpperLims('NV', percentRangeOverdraw, dataframeList)
+lowerYLimGermaneFlow, upperYLimGermaneFlow = lowerAndUpperLims('Germane Flow', percentRangeOverdraw, dataframeList)
+lowerYLimWireDensity, upperYLimWireDensity = lowerAndUpperLims('Wire Density', percentRangeOverdraw, dataframeList)
+
 
 fig, axs = plt.subplots(nrows=3, ncols=3, sharey='row', sharex=True, figsize=(9, 9))
 fig.set_figwidth(20)
