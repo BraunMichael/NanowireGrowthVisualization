@@ -8,6 +8,14 @@ from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLoc
 
 # TODO: functionize this
 
+
+def makeMPLColormap(numColors, rotation, light, hue, colorMapDarkValue):
+    Palette = sns.cubehelix_palette(n_colors=30, rot=0.5, light=1, hue=1, dark=colorMapDarkValue, as_cmap=False)
+    mapPalette = sns.cubehelix_palette(n_colors=30, rot=0.5, light=1, hue=1, dark=colorMapDarkValue, as_cmap=True)
+    mapMPL = Colors.LinearSegmentedColormap.from_list("test", Palette)
+    return mapMPL
+
+
 SMALL_SIZE = 18
 MEDIUM_SIZE = 20
 BIGGER_SIZE = 22
@@ -33,8 +41,6 @@ df = df_original.copy()
 df = df.dropna(subset=[SnSurfaceStr])
 
 df = df.apply(pd.to_numeric, errors='ignore')
-# df['Sn Surface Coverage'] = df['Sn Surface Coverage'] * np.random.uniform(0.9,1.1,df.shape[0])
-# df['XRD Sn Content'] = df['XRD Sn Content'] * np.random.uniform(0.9,1.1,df.shape[0])
 
 # Sort the values by XRD Sn Content in descending order so the smallest Sn content values (circles) get drawn last (on top of everything else)
 # Ties broken by Sn Surface Coverage
@@ -43,20 +49,11 @@ df_resorted = df.sort_values(by=['XRD Sn Content', SnSurfaceStr], kind='mergesor
 # Have a dataframe with numerical values for position if needed (ie some plots can't plot catagorical data)
 df_resorted_sub = df_resorted.replace({'Center': 0, 'Andrew': 1, 'Reflectometry': 2}, inplace=False)
 
-# sns.pairplot(df, hue = 'Position', corner=True, plot_kws={'alpha':0.4,'s':80},height = 4, diag_kind='hist')
 
 colorMapDarkValue = 0.15  # (0 makes highest value black, going to 1)
-RedPalette = sns.cubehelix_palette(n_colors=30, rot=0.5, light=1, hue=1, dark=colorMapDarkValue, as_cmap=False)
-RedMap = sns.cubehelix_palette(n_colors=30, rot=0.5, light=1, hue=1, dark=colorMapDarkValue, as_cmap=True)
-RedMapMPL = Colors.LinearSegmentedColormap.from_list("test", RedPalette)
-
-GreenPalette = sns.cubehelix_palette(n_colors=30, rot=-0.5, light=1, hue=1, dark=colorMapDarkValue, as_cmap=False)
-GreenMap = sns.cubehelix_palette(n_colors=30, rot=-0.5, light=1, hue=1, dark=colorMapDarkValue, as_cmap=True)
-GreenMapMPL = Colors.LinearSegmentedColormap.from_list("test", GreenPalette)
-
-BluePalette = sns.cubehelix_palette(n_colors=30, rot=-0.1, light=1, hue=1, dark=colorMapDarkValue, as_cmap=False)
-BlueMap = sns.cubehelix_palette(n_colors=30, rot=-0.1, light=1, hue=1, dark=colorMapDarkValue, as_cmap=True)
-BlueMapMPL = Colors.LinearSegmentedColormap.from_list("test", BluePalette)
+RedMapMPL = makeMPLColormap(numColors=30, rotation=0.5, light=1, hue=1, colorMapDarkValue=colorMapDarkValue)
+GreenMapMPL = makeMPLColormap(numColors=30, rotation=-0.5, light=1, hue=1, colorMapDarkValue=colorMapDarkValue)
+BlueMapMPL = makeMPLColormap(numColors=30, rotation=-0.1, light=1, hue=1, colorMapDarkValue=colorMapDarkValue)
 
 df_Center = df_resorted.loc[df_resorted['Position'] == 'Center']
 df_Reflectometry = df_resorted.loc[df_resorted['Position'] == 'Reflectometry']
@@ -69,10 +66,7 @@ andrewPositionColormap = RedMapMPL
 reflectometryPositionColormap = RedMapMPL
 plotAlpha = 0.7
 
-# Use the value from all the
-# colorbarMax = df['Sn Surface Coverage'].max()
-colorbarMax = df['Sn Surface Coverage (percent total area)'].max()
-
+colorbarMax = df[SnSurfaceStr].max()
 # colorbarMax = 6
 
 percentRangeOverdraw = 0.2  # add 20% of range on each side for circle's to fit nicely
