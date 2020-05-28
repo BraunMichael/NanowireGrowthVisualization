@@ -25,6 +25,70 @@ def lowerAndUpperLims(columnTitle, percentRangeOverdraw, dataframeList):
     return lowerLim, upperLim
 
 
+def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveFig=True, colorbarMax=None):
+    assert len(yDataHeaderList) == len(yTitlesList), "You must have a title for each header"
+    assert len(dataframeList) == len(colorMapList), "You must have a colormap for each dataframe"
+    if colorbarMax is None:
+        _, colorbarMax = lowerAndUpperLims(colorColumn, 0, dataframeList)
+    circleScaleFactor = 500
+    plotAlpha = 0.7
+    percentRangeOverdraw = 0.2  # add 20% of range on each side for circle's to fit nicely
+
+    fig, axs = plt.subplots(nrows=len(yDataHeaderList), ncols=len(dataframeList), sharey='row', sharex=True, figsize=(9, 9))
+    fig.set_figwidth(20)
+    fig.set_figheight(20)
+    fig.subplots_adjust(wspace=0)
+    fig.subplots_adjust(hspace=0)
+    fig.add_subplot(111, frameon=False, facecolor='white')
+
+    # Plot everything
+    for rowIndex, (column, title) in enumerate(zip(yDataHeaderList, yTitlesList)):
+        for colIndex, (dataframe, colorMap) in enumerate(zip(dataframeList, colorMapList)):
+            aPlot = axs[rowIndex][colIndex].scatter(dataframe[xDataHeader], dataframe[column], s=circleScaleFactor * dataframe[circleSizeColumn], c=dataframe[colorColumn], cmap=colorMap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+            if colIndex == 0:
+                axs[rowIndex][colIndex].set_ylim(lowerAndUpperLims(column, percentRangeOverdraw, dataframeList))
+                axs[rowIndex][colIndex].set_ylabel(title)
+
+    lowerXLim, upperXLim = lowerAndUpperLims(xDataHeader, percentRangeOverdraw, dataframeList)
+    for axList in axs:
+        for ax in axList:
+            ax.set_xlim(lowerXLim + 0.01, upperXLim - 0.01)
+            ax.minorticks_on()
+            ax.tick_params(which='both', axis='both', direction='in', top=True, bottom=True, left=True, right=True)
+            ax.tick_params(which='major', axis='both', direction='in', length=8, width=1)
+            ax.tick_params(which='minor', axis='both', direction='in', length=4, width=1)
+            ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+            ax.yaxis.set_minor_locator(AutoMinorLocator(1))
+
+    plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+    plt.xlabel(xTitle)
+
+    fig.subplots_adjust(right=0.8)
+
+    # [horizontal position, vertical position, relative width, relative height]
+    colorbar_ax = fig.add_axes([0.83, 0.225, 0.03, 0.3])
+    cbar = fig.colorbar(aPlot, cax=colorbar_ax)
+    cbar.set_alpha(1)
+    cbar.draw_all()
+    cbar.ax.set_ylabel(colorTitle)
+
+    # [horizontal position, vertical position, relative width, relative height]
+    legend_ax = fig.add_axes([0.85, 0.525, 0.03, 0.3])
+    legend_ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+    legend_ax.axis('off')
+    hiddenLegendHandles = []
+    hiddenLegendLabels = []
+    for circleSize in sizeLegendList:
+        hiddenLegendPlot = plt.scatter([], [], c='k', alpha=0.8, s=circleScaleFactor * circleSize)
+        tempHandle, tempLabel = hiddenLegendPlot.legend_elements(prop="sizes")
+        hiddenLegendHandles.extend(tempHandle)
+        hiddenLegendLabels.extend(tempLabel)
+
+    plotLegend = legend_ax.legend(hiddenLegendHandles, sizeLegendList, title=circleSizeTitle, numpoints=1, scatterpoints=5, frameon=False, labelspacing=3.5, handletextpad=2, borderaxespad=0, loc='center', borderpad=2)
+    if saveFig:
+        fig.savefig('GeSnVisualization_inclRandomXRD.svg', facecolor='white', edgecolor='none', format='svg')
+
+
 SMALL_SIZE = 18
 MEDIUM_SIZE = 20
 BIGGER_SIZE = 22
@@ -68,360 +132,286 @@ df_Center = df_resorted.loc[df_resorted['Position'] == 'Center']
 df_Reflectometry = df_resorted.loc[df_resorted['Position'] == 'Reflectometry']
 df_Andrew = df_resorted.loc[df_resorted['Position'] == 'Andrew']
 
-SnContentLegendList = [4, 8, 12]
-circleScaleFactor = 500
-centerPositionColormap = RedMapMPL
-andrewPositionColormap = RedMapMPL
-reflectometryPositionColormap = RedMapMPL
-plotAlpha = 0.7
-
-colorbarMax = df[SnSurfaceStr].max()
-# colorbarMax = 6
-
-percentRangeOverdraw = 0.2  # add 20% of range on each side for circle's to fit nicely
-
-
-
-
-
 dataframeList = [df_Center, df_Andrew, df_Reflectometry]
-lowerXLim, upperXLim = lowerAndUpperLims('Temperature', percentRangeOverdraw, dataframeList)
-lowerYLimNV, upperYLimNV = lowerAndUpperLims('NV', percentRangeOverdraw, dataframeList)
-lowerYLimGermaneFlow, upperYLimGermaneFlow = lowerAndUpperLims('Germane Flow', percentRangeOverdraw, dataframeList)
-lowerYLimWireDensity, upperYLimWireDensity = lowerAndUpperLims('Wire Density', percentRangeOverdraw, dataframeList)
+colorMapList = [RedMapMPL, RedMapMPL, RedMapMPL]
+
+yDataHeaderList = ['NV', 'Germane Flow', 'Wire Density']
+yTitlesList = ['Needle Valve', 'Germane Flow (sccm)', 'Nanowire Density (μm$^{-2}$)']
+xDataHeader = 'Temperature'
+xTitle = 'Temperature (°C)'
+circleSizeColumn = 'XRD Sn Content'
+circleSizeTitle = 'XRD Sn Content'
+sizeLegendList = [4, 8, 12]  #[4, 8, 12] for Sn content as circle sizes
+
+colorColumn = SnSurfaceStr
+colorTitle = 'Surface Sn Coverage Percent'
+
+plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveFig=True, colorbarMax=None)
 
 
-fig, axs = plt.subplots(nrows=3, ncols=3, sharey='row', sharex=True, figsize=(9, 9))
-fig.set_figwidth(20)
-fig.set_figheight(20)
-fig.subplots_adjust(wspace=0)
-fig.subplots_adjust(hspace=0)
-fig.add_subplot(111, frameon=False, facecolor='white')
-
-l1 = axs[0][0].scatter(df_Center['Temperature'], df_Center['NV'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[0][0].set_ylim(lowerYLimNV, upperYLimNV)
-axs[0][0].set_ylabel("Needle Valve")
-
-l2 = axs[0][1].scatter(df_Andrew['Temperature'], df_Andrew['NV'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l3 = axs[0][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['NV'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l4 = axs[1][0].scatter(df_Center['Temperature'], df_Center['Germane Flow'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[1][0].set_ylim(lowerYLimGermaneFlow, upperYLimGermaneFlow)
-axs[1][0].set_ylabel("Germane Flow (sccm)")
-
-l5 = axs[1][1].scatter(df_Andrew['Temperature'], df_Andrew['Germane Flow'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l6 = axs[1][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Germane Flow'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l7 = axs[2][0].scatter(df_Center['Temperature'], df_Center['Wire Density'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[2][0].set_ylim(lowerYLimWireDensity, upperYLimWireDensity)
-axs[2][0].set_ylabel("Nanowire Density (μm$^{-2}$)")
-
-l8 = axs[2][1].scatter(df_Andrew['Temperature'], df_Andrew['Wire Density'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l9 = axs[2][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Wire Density'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-for axList in axs:
-    for ax in axList:
-        ax.set_xlim(lowerXLim + 0.01, upperXLim - 0.01)
-        ax.minorticks_on()
-        ax.tick_params(which='both', axis='both', direction='in', top=True, bottom=True, left=True, right=True)
-        ax.tick_params(which='major', axis='both', direction='in', length=8, width=1)
-        ax.tick_params(which='minor', axis='both', direction='in', length=4, width=1)
-        ax.xaxis.set_minor_locator(AutoMinorLocator(2))
-        ax.yaxis.set_minor_locator(AutoMinorLocator(1))
-
-plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-plt.xlabel("Temperature (°C)")
-# This would set a centered y label
-# plt.ylabel("NV")
-
-fig.subplots_adjust(right=0.8)
-
-# [horizontal position, vertical position, relative width, relative height]
-colorbar_ax = fig.add_axes([0.83, 0.225, 0.03, 0.3])
-cbar = fig.colorbar(l1, cax=colorbar_ax)
-cbar.set_alpha(1)
-cbar.draw_all()
-cbar.ax.set_ylabel('Surface Sn Coverage Percent')
-
-# [horizontal position, vertical position, relative width, relative height]
-legend_ax = fig.add_axes([0.85, 0.525, 0.03, 0.3])
-legend_ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-legend_ax.axis('off')
-hiddenLegendHandles = []
-hiddenLegendLabels = []
-for SnContent in SnContentLegendList:
-    hiddenLegendPlot = plt.scatter([], [], c='k', alpha=0.8, s=circleScaleFactor * SnContent)
-    tempHandle, tempLabel = hiddenLegendPlot.legend_elements(prop="sizes")
-    hiddenLegendHandles.extend(tempHandle)
-    hiddenLegendLabels.extend(tempLabel)
-
-plotLegend = legend_ax.legend(hiddenLegendHandles, SnContentLegendList, title="XRD Sn Content", numpoints=1, scatterpoints=5, frameon=False, labelspacing=3.5, handletextpad=2, borderaxespad=0,
-                              loc='center', borderpad=2)
-
-fig.savefig('GeSnVisualization_inclRandomXRD.png', facecolor='white', edgecolor='none')
-
-# Only for actually measured XRD
-df_Center = df_Center.dropna(subset=['XRD Measured'])
-df_Andrew = df_Andrew.dropna(subset=['XRD Measured'])
-df_Reflectometry = df_Reflectometry.dropna(subset=['XRD Measured'])
-
-SnContentLegendList = [4, 8, 12]
-circleScaleFactor = 500
-centerPositionColormap = RedMapMPL
-andrewPositionColormap = RedMapMPL
-reflectometryPositionColormap = RedMapMPL
-plotAlpha = 0.7
-
-# Use the value from all the
-colorbarMax = df[SnSurfaceStr].max()
-# colorbarMax = 5
-
-# Use the same ranges as full dataset
-
-# percentRangeOverdraw = 0.2 # add 20% of range on each side for circle's to fit nicely
-
-# temperatureMin = df_Center["Temperature"].min()
-# temperatureMax = df_Center["Temperature"].max()
-# temperatureRange = temperatureMax - temperatureMin
-# lowerXLim = temperatureMin - percentRangeOverdraw*temperatureRange
-# upperXLim = temperatureMax + percentRangeOverdraw*temperatureRange
-
-# nvMin = df_Center["NV"].min()
-# nvMax = df_Center["NV"].max()
-# nvRange = nvMax - nvMin
-# lowerYLimNV = nvMin - percentRangeOverdraw*nvRange
-# upperYLimNV = nvMax + percentRangeOverdraw*nvRange
 
 
-# germaneFlowMin = df_Center["Germane Flow"].min()
-# germaneFlowMax = df_Center["Germane Flow"].max()
-# germaneFlowRange = germaneFlowMax - germaneFlowMin
-# lowerYLimGermaneFlow = germaneFlowMin - percentRangeOverdraw*germaneFlowRange
-# upperYLimGermaneFlow = germaneFlowMax + percentRangeOverdraw*germaneFlowRange
 
-# wireDensityMin = min(df_Center["Wire Density"].min(), df_Andrew["Wire Density"].min(), df_Reflectometry["Wire Density"].min())
-# wireDensityMax = max(df_Center["Wire Density"].max(), df_Andrew["Wire Density"].max(), df_Reflectometry["Wire Density"].max())
-# wireDensityRange = wireDensityMax - wireDensityMin
-# lowerYLimWireDensity = wireDensityMin - percentRangeOverdraw*wireDensityRange
-# upperYLimWireDensity = wireDensityMax + percentRangeOverdraw*wireDensityRange
-
-fig, axs = plt.subplots(nrows=3, ncols=3, sharey='row', sharex=True, figsize=(9, 9))
-fig.set_figwidth(20)
-fig.set_figheight(20)
-fig.subplots_adjust(wspace=0)
-fig.subplots_adjust(hspace=0)
-fig.add_subplot(111, frameon=False, facecolor='white')
-
-l1 = axs[0][0].scatter(df_Center['Temperature'], df_Center['NV'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[0][0].set_ylim(lowerYLimNV, upperYLimNV)
-axs[0][0].set_ylabel("Needle Valve")
-
-l2 = axs[0][1].scatter(df_Andrew['Temperature'], df_Andrew['NV'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l3 = axs[0][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['NV'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l4 = axs[1][0].scatter(df_Center['Temperature'], df_Center['Germane Flow'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[1][0].set_ylim(lowerYLimGermaneFlow, upperYLimGermaneFlow)
-axs[1][0].set_ylabel("Germane Flow (sccm)")
-
-l5 = axs[1][1].scatter(df_Andrew['Temperature'], df_Andrew['Germane Flow'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l6 = axs[1][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Germane Flow'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l7 = axs[2][0].scatter(df_Center['Temperature'], df_Center['Wire Density'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[2][0].set_ylim(lowerYLimWireDensity, upperYLimWireDensity)
-axs[2][0].set_ylabel("Nanowire Density (μm$^{-2}$)")
-
-l8 = axs[2][1].scatter(df_Andrew['Temperature'], df_Andrew['Wire Density'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l9 = axs[2][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Wire Density'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-for axList in axs:
-    for ax in axList:
-        ax.set_xlim(lowerXLim + 0.01, upperXLim - 0.01)
-        ax.minorticks_on()
-        ax.tick_params(which='both', axis='both', direction='in', top=True, bottom=True, left=True, right=True)
-        ax.tick_params(which='major', axis='both', direction='in', length=8, width=1)
-        ax.tick_params(which='minor', axis='both', direction='in', length=4, width=1)
-        ax.xaxis.set_minor_locator(AutoMinorLocator(2))
-        ax.yaxis.set_minor_locator(AutoMinorLocator(1))
-
-plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-plt.xlabel("Temperature (°C)")
-# This would set a centered y label
-# plt.ylabel("NV")
-
-fig.subplots_adjust(right=0.8)
-
-# [horizontal position, vertical position, relative width, relative height]
-colorbar_ax = fig.add_axes([0.83, 0.225, 0.03, 0.3])
-cbar = fig.colorbar(l1, cax=colorbar_ax)
-cbar.set_alpha(1)
-cbar.draw_all()
-cbar.ax.set_ylabel('Surface Sn Coverage Percent')
-
-# [horizontal position, vertical position, relative width, relative height]
-legend_ax = fig.add_axes([0.85, 0.525, 0.03, 0.3])
-legend_ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-legend_ax.axis('off')
-hiddenLegendHandles = []
-hiddenLegendLabels = []
-for SnContent in SnContentLegendList:
-    hiddenLegendPlot = plt.scatter([], [], c='k', alpha=0.8, s=circleScaleFactor * SnContent)
-    tempHandle, tempLabel = hiddenLegendPlot.legend_elements(prop="sizes")
-    hiddenLegendHandles.extend(tempHandle)
-    hiddenLegendLabels.extend(tempLabel)
-
-plotLegend = legend_ax.legend(hiddenLegendHandles, SnContentLegendList, title="XRD Sn Content", numpoints=1, scatterpoints=5, frameon=False, labelspacing=3.5, handletextpad=2, borderaxespad=0,
-                              loc='center', borderpad=2)
-
-fig.savefig('GeSnVisualization_RealData.png', facecolor='white', edgecolor='none')
-
-# Only for actually measured XRD and Wire params
-df_Center = df_Center.dropna(subset=['Average Wire Width (nm)'])
-df_Andrew = df_Andrew.dropna(subset=['Average Wire Width (nm)'])
-df_Reflectometry = df_Reflectometry.dropna(subset=['Average Wire Width (nm)'])
-
-SnContentLegendList = [4, 8, 12]
-circleScaleFactor = 500
-centerPositionColormap = RedMapMPL
-andrewPositionColormap = RedMapMPL
-reflectometryPositionColormap = RedMapMPL
-plotAlpha = 0.7
-
-# Use the value from all the
+#
+# # Only for actually measured XRD
+# df_Center = df_Center.dropna(subset=['XRD Measured'])
+# df_Andrew = df_Andrew.dropna(subset=['XRD Measured'])
+# df_Reflectometry = df_Reflectometry.dropna(subset=['XRD Measured'])
+#
+# SnContentLegendList = [4, 8, 12]
+# circleScaleFactor = 500
+# centerPositionColormap = RedMapMPL
+# andrewPositionColormap = RedMapMPL
+# reflectometryPositionColormap = RedMapMPL
+# plotAlpha = 0.7
+#
+# # Use the value from all the
 # colorbarMax = df[SnSurfaceStr].max()
-colorbarMax = 5
-
-# Use the same ranges as full dataset
-
-# percentRangeOverdraw = 0.2 # add 20% of range on each side for circle's to fit nicely
-
-# temperatureMin = df_Center["Temperature"].min()
-# temperatureMax = df_Center["Temperature"].max()
-# temperatureRange = temperatureMax - temperatureMin
-# lowerXLim = temperatureMin - percentRangeOverdraw*temperatureRange
-# upperXLim = temperatureMax + percentRangeOverdraw*temperatureRange
-
-# nvMin = df_Center["NV"].min()
-# nvMax = df_Center["NV"].max()
-# nvRange = nvMax - nvMin
-# lowerYLimNV = nvMin - percentRangeOverdraw*nvRange
-# upperYLimNV = nvMax + percentRangeOverdraw*nvRange
-
-
-# germaneFlowMin = df_Center["Germane Flow"].min()
-# germaneFlowMax = df_Center["Germane Flow"].max()
-# germaneFlowRange = germaneFlowMax - germaneFlowMin
-# lowerYLimGermaneFlow = germaneFlowMin - percentRangeOverdraw*germaneFlowRange
-# upperYLimGermaneFlow = germaneFlowMax + percentRangeOverdraw*germaneFlowRange
-
-# wireDensityMin = min(df_Center["Wire Density"].min(), df_Andrew["Wire Density"].min(), df_Reflectometry["Wire Density"].min())
-# wireDensityMax = max(df_Center["Wire Density"].max(), df_Andrew["Wire Density"].max(), df_Reflectometry["Wire Density"].max())
-# wireDensityRange = wireDensityMax - wireDensityMin
-# lowerYLimWireDensity = wireDensityMin - percentRangeOverdraw*wireDensityRange
-# upperYLimWireDensity = wireDensityMax + percentRangeOverdraw*wireDensityRange
-
-
-wireWidthMin = min(df_Center["Average Wire Width (nm)"].min(), df_Andrew["Average Wire Width (nm)"].min(), df_Reflectometry["Average Wire Width (nm)"].min())
-wireWidthMax = max(df_Center["Average Wire Width (nm)"].max(), df_Andrew["Average Wire Width (nm)"].max(), df_Reflectometry["Average Wire Width (nm)"].max())
-wireWidthRange = wireWidthMax - wireWidthMin
-lowerYLimWireWidth = wireWidthMin - percentRangeOverdraw * wireWidthRange
-upperYLimWireWidth = wireWidthMax + percentRangeOverdraw * wireWidthRange
-
-wireLengthMin = min(df_Center["Average Wire Length (nm)"].min(), df_Andrew["Average Wire Length (nm)"].min(), df_Reflectometry["Average Wire Length (nm)"].min())
-wireLengthMax = max(df_Center["Average Wire Length (nm)"].max(), df_Andrew["Average Wire Length (nm)"].max(), df_Reflectometry["Average Wire Length (nm)"].max())
-wireLengthRange = wireLengthMax - wireLengthMin
-lowerYLimWireLength = wireLengthMin - percentRangeOverdraw * wireLengthRange
-upperYLimWireLength = wireLengthMax + percentRangeOverdraw * wireLengthRange
-
-fig, axs = plt.subplots(nrows=5, ncols=3, sharey='row', sharex=True, figsize=(9, 9))
-fig.set_figwidth(20)
-fig.set_figheight(30)
-fig.subplots_adjust(wspace=0)
-fig.subplots_adjust(hspace=0)
-fig.add_subplot(111, frameon=False, facecolor='white')
-
-l1 = axs[0][0].scatter(df_Center['Temperature'], df_Center['NV'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[0][0].set_ylim(lowerYLimNV, upperYLimNV)
-axs[0][0].set_ylabel("Needle Valve")
-
-l2 = axs[0][1].scatter(df_Andrew['Temperature'], df_Andrew['NV'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l3 = axs[0][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['NV'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l4 = axs[1][0].scatter(df_Center['Temperature'], df_Center['Germane Flow'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[1][0].set_ylim(lowerYLimGermaneFlow, upperYLimGermaneFlow)
-axs[1][0].set_ylabel("Germane Flow (sccm)")
-
-l5 = axs[1][1].scatter(df_Andrew['Temperature'], df_Andrew['Germane Flow'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l6 = axs[1][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Germane Flow'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l7 = axs[2][0].scatter(df_Center['Temperature'], df_Center['Wire Density'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[2][0].set_ylim(lowerYLimWireDensity, upperYLimWireDensity)
-axs[2][0].set_ylabel("Nanowire Density (μm$^{-2}$)")
-
-l8 = axs[2][1].scatter(df_Andrew['Temperature'], df_Andrew['Wire Density'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l9 = axs[2][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Wire Density'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l10 = axs[3][0].scatter(df_Center['Temperature'], df_Center['Average Wire Width (nm)'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[3][0].set_ylim(lowerYLimWireWidth, upperYLimWireWidth)
-axs[3][0].set_ylabel("Nanowire Width (nm)")
-
-l11 = axs[3][1].scatter(df_Andrew['Temperature'], df_Andrew['Average Wire Width (nm)'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l12 = axs[3][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Average Wire Width (nm)'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l13 = axs[4][0].scatter(df_Center['Temperature'], df_Center['Average Wire Length (nm)'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-axs[4][0].set_ylim(lowerYLimWireLength, upperYLimWireLength)
-axs[4][0].set_ylabel("Nanowire Length (nm)")
-
-l14 = axs[4][1].scatter(df_Andrew['Temperature'], df_Andrew['Average Wire Length (nm)'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-l15 = axs[4][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Average Wire Length (nm)'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
-
-for axList in axs:
-    for ax in axList:
-        ax.set_xlim(lowerXLim + 0.01, upperXLim - 0.01)
-        ax.minorticks_on()
-        ax.tick_params(which='both', axis='both', direction='in', top=True, bottom=True, left=True, right=True)
-        ax.tick_params(which='major', axis='both', direction='in', length=8, width=1)
-        ax.tick_params(which='minor', axis='both', direction='in', length=4, width=1)
-        ax.xaxis.set_minor_locator(AutoMinorLocator(2))
-        ax.yaxis.set_minor_locator(AutoMinorLocator(1))
-
-plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-plt.xlabel("Temperature (°C)")
-# This would set a centered y label
-# plt.ylabel("NV")
-
-fig.subplots_adjust(right=0.8)
-
-# [horizontal position, vertical position, relative width, relative height]
-colorbar_ax = fig.add_axes([0.83, 0.225, 0.03, 0.3])
-cbar = fig.colorbar(l1, cax=colorbar_ax)
-cbar.set_alpha(1)
-cbar.draw_all()
-cbar.ax.set_ylabel('Surface Sn Coverage Percent')
-
-# [horizontal position, vertical position, relative width, relative height]
-legend_ax = fig.add_axes([0.85, 0.525, 0.03, 0.3])
-legend_ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
-legend_ax.axis('off')
-hiddenLegendHandles = []
-hiddenLegendLabels = []
-for SnContent in SnContentLegendList:
-    hiddenLegendPlot = plt.scatter([], [], c='k', alpha=0.8, s=circleScaleFactor * SnContent)
-    tempHandle, tempLabel = hiddenLegendPlot.legend_elements(prop="sizes")
-    hiddenLegendHandles.extend(tempHandle)
-    hiddenLegendLabels.extend(tempLabel)
-
-plotLegend = legend_ax.legend(hiddenLegendHandles, SnContentLegendList, title="XRD Sn Content", numpoints=1, scatterpoints=5, frameon=False, labelspacing=3.5, handletextpad=2, borderaxespad=0,
-                              loc='center', borderpad=2)
-
-fig.savefig('GeSnVisualization_RealData_smallerRange.png', facecolor='white', edgecolor='none', dpi=300, format='png')
+# # colorbarMax = 5
+#
+# # Use the same ranges as full dataset
+#
+# # percentRangeOverdraw = 0.2 # add 20% of range on each side for circle's to fit nicely
+#
+# # temperatureMin = df_Center["Temperature"].min()
+# # temperatureMax = df_Center["Temperature"].max()
+# # temperatureRange = temperatureMax - temperatureMin
+# # lowerXLim = temperatureMin - percentRangeOverdraw*temperatureRange
+# # upperXLim = temperatureMax + percentRangeOverdraw*temperatureRange
+#
+# # nvMin = df_Center["NV"].min()
+# # nvMax = df_Center["NV"].max()
+# # nvRange = nvMax - nvMin
+# # lowerYLimNV = nvMin - percentRangeOverdraw*nvRange
+# # upperYLimNV = nvMax + percentRangeOverdraw*nvRange
+#
+#
+# # germaneFlowMin = df_Center["Germane Flow"].min()
+# # germaneFlowMax = df_Center["Germane Flow"].max()
+# # germaneFlowRange = germaneFlowMax - germaneFlowMin
+# # lowerYLimGermaneFlow = germaneFlowMin - percentRangeOverdraw*germaneFlowRange
+# # upperYLimGermaneFlow = germaneFlowMax + percentRangeOverdraw*germaneFlowRange
+#
+# # wireDensityMin = min(df_Center["Wire Density"].min(), df_Andrew["Wire Density"].min(), df_Reflectometry["Wire Density"].min())
+# # wireDensityMax = max(df_Center["Wire Density"].max(), df_Andrew["Wire Density"].max(), df_Reflectometry["Wire Density"].max())
+# # wireDensityRange = wireDensityMax - wireDensityMin
+# # lowerYLimWireDensity = wireDensityMin - percentRangeOverdraw*wireDensityRange
+# # upperYLimWireDensity = wireDensityMax + percentRangeOverdraw*wireDensityRange
+#
+# fig, axs = plt.subplots(nrows=3, ncols=3, sharey='row', sharex=True, figsize=(9, 9))
+# fig.set_figwidth(20)
+# fig.set_figheight(20)
+# fig.subplots_adjust(wspace=0)
+# fig.subplots_adjust(hspace=0)
+# fig.add_subplot(111, frameon=False, facecolor='white')
+#
+# l1 = axs[0][0].scatter(df_Center['Temperature'], df_Center['NV'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[0][0].set_ylim(lowerYLimNV, upperYLimNV)
+# axs[0][0].set_ylabel("Needle Valve")
+#
+# l2 = axs[0][1].scatter(df_Andrew['Temperature'], df_Andrew['NV'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l3 = axs[0][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['NV'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l4 = axs[1][0].scatter(df_Center['Temperature'], df_Center['Germane Flow'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[1][0].set_ylim(lowerYLimGermaneFlow, upperYLimGermaneFlow)
+# axs[1][0].set_ylabel("Germane Flow (sccm)")
+#
+# l5 = axs[1][1].scatter(df_Andrew['Temperature'], df_Andrew['Germane Flow'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l6 = axs[1][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Germane Flow'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l7 = axs[2][0].scatter(df_Center['Temperature'], df_Center['Wire Density'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[2][0].set_ylim(lowerYLimWireDensity, upperYLimWireDensity)
+# axs[2][0].set_ylabel("Nanowire Density (μm$^{-2}$)")
+#
+# l8 = axs[2][1].scatter(df_Andrew['Temperature'], df_Andrew['Wire Density'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l9 = axs[2][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Wire Density'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# for axList in axs:
+#     for ax in axList:
+#         ax.set_xlim(lowerXLim + 0.01, upperXLim - 0.01)
+#         ax.minorticks_on()
+#         ax.tick_params(which='both', axis='both', direction='in', top=True, bottom=True, left=True, right=True)
+#         ax.tick_params(which='major', axis='both', direction='in', length=8, width=1)
+#         ax.tick_params(which='minor', axis='both', direction='in', length=4, width=1)
+#         ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+#         ax.yaxis.set_minor_locator(AutoMinorLocator(1))
+#
+# plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+# plt.xlabel("Temperature (°C)")
+# # This would set a centered y label
+# # plt.ylabel("NV")
+#
+# fig.subplots_adjust(right=0.8)
+#
+# # [horizontal position, vertical position, relative width, relative height]
+# colorbar_ax = fig.add_axes([0.83, 0.225, 0.03, 0.3])
+# cbar = fig.colorbar(l1, cax=colorbar_ax)
+# cbar.set_alpha(1)
+# cbar.draw_all()
+# cbar.ax.set_ylabel('Surface Sn Coverage Percent')
+#
+# # [horizontal position, vertical position, relative width, relative height]
+# legend_ax = fig.add_axes([0.85, 0.525, 0.03, 0.3])
+# legend_ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+# legend_ax.axis('off')
+# hiddenLegendHandles = []
+# hiddenLegendLabels = []
+# for SnContent in SnContentLegendList:
+#     hiddenLegendPlot = plt.scatter([], [], c='k', alpha=0.8, s=circleScaleFactor * SnContent)
+#     tempHandle, tempLabel = hiddenLegendPlot.legend_elements(prop="sizes")
+#     hiddenLegendHandles.extend(tempHandle)
+#     hiddenLegendLabels.extend(tempLabel)
+#
+# plotLegend = legend_ax.legend(hiddenLegendHandles, SnContentLegendList, title="XRD Sn Content", numpoints=1, scatterpoints=5, frameon=False, labelspacing=3.5, handletextpad=2, borderaxespad=0,
+#                               loc='center', borderpad=2)
+#
+# fig.savefig('GeSnVisualization_RealData.png', facecolor='white', edgecolor='none')
+#
+# # Only for actually measured XRD and Wire params
+# df_Center = df_Center.dropna(subset=['Average Wire Width (nm)'])
+# df_Andrew = df_Andrew.dropna(subset=['Average Wire Width (nm)'])
+# df_Reflectometry = df_Reflectometry.dropna(subset=['Average Wire Width (nm)'])
+#
+# SnContentLegendList = [4, 8, 12]
+# circleScaleFactor = 500
+# centerPositionColormap = RedMapMPL
+# andrewPositionColormap = RedMapMPL
+# reflectometryPositionColormap = RedMapMPL
+# plotAlpha = 0.7
+#
+# # Use the value from all the
+# # colorbarMax = df[SnSurfaceStr].max()
+# colorbarMax = 5
+#
+# # Use the same ranges as full dataset
+#
+# # percentRangeOverdraw = 0.2 # add 20% of range on each side for circle's to fit nicely
+#
+# # temperatureMin = df_Center["Temperature"].min()
+# # temperatureMax = df_Center["Temperature"].max()
+# # temperatureRange = temperatureMax - temperatureMin
+# # lowerXLim = temperatureMin - percentRangeOverdraw*temperatureRange
+# # upperXLim = temperatureMax + percentRangeOverdraw*temperatureRange
+#
+# # nvMin = df_Center["NV"].min()
+# # nvMax = df_Center["NV"].max()
+# # nvRange = nvMax - nvMin
+# # lowerYLimNV = nvMin - percentRangeOverdraw*nvRange
+# # upperYLimNV = nvMax + percentRangeOverdraw*nvRange
+#
+#
+# # germaneFlowMin = df_Center["Germane Flow"].min()
+# # germaneFlowMax = df_Center["Germane Flow"].max()
+# # germaneFlowRange = germaneFlowMax - germaneFlowMin
+# # lowerYLimGermaneFlow = germaneFlowMin - percentRangeOverdraw*germaneFlowRange
+# # upperYLimGermaneFlow = germaneFlowMax + percentRangeOverdraw*germaneFlowRange
+#
+# # wireDensityMin = min(df_Center["Wire Density"].min(), df_Andrew["Wire Density"].min(), df_Reflectometry["Wire Density"].min())
+# # wireDensityMax = max(df_Center["Wire Density"].max(), df_Andrew["Wire Density"].max(), df_Reflectometry["Wire Density"].max())
+# # wireDensityRange = wireDensityMax - wireDensityMin
+# # lowerYLimWireDensity = wireDensityMin - percentRangeOverdraw*wireDensityRange
+# # upperYLimWireDensity = wireDensityMax + percentRangeOverdraw*wireDensityRange
+#
+#
+# wireWidthMin = min(df_Center["Average Wire Width (nm)"].min(), df_Andrew["Average Wire Width (nm)"].min(), df_Reflectometry["Average Wire Width (nm)"].min())
+# wireWidthMax = max(df_Center["Average Wire Width (nm)"].max(), df_Andrew["Average Wire Width (nm)"].max(), df_Reflectometry["Average Wire Width (nm)"].max())
+# wireWidthRange = wireWidthMax - wireWidthMin
+# lowerYLimWireWidth = wireWidthMin - percentRangeOverdraw * wireWidthRange
+# upperYLimWireWidth = wireWidthMax + percentRangeOverdraw * wireWidthRange
+#
+# wireLengthMin = min(df_Center["Average Wire Length (nm)"].min(), df_Andrew["Average Wire Length (nm)"].min(), df_Reflectometry["Average Wire Length (nm)"].min())
+# wireLengthMax = max(df_Center["Average Wire Length (nm)"].max(), df_Andrew["Average Wire Length (nm)"].max(), df_Reflectometry["Average Wire Length (nm)"].max())
+# wireLengthRange = wireLengthMax - wireLengthMin
+# lowerYLimWireLength = wireLengthMin - percentRangeOverdraw * wireLengthRange
+# upperYLimWireLength = wireLengthMax + percentRangeOverdraw * wireLengthRange
+#
+# fig, axs = plt.subplots(nrows=5, ncols=3, sharey='row', sharex=True, figsize=(9, 9))
+# fig.set_figwidth(20)
+# fig.set_figheight(30)
+# fig.subplots_adjust(wspace=0)
+# fig.subplots_adjust(hspace=0)
+# fig.add_subplot(111, frameon=False, facecolor='white')
+#
+# l1 = axs[0][0].scatter(df_Center['Temperature'], df_Center['NV'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[0][0].set_ylim(lowerYLimNV, upperYLimNV)
+# axs[0][0].set_ylabel("Needle Valve")
+#
+# l2 = axs[0][1].scatter(df_Andrew['Temperature'], df_Andrew['NV'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l3 = axs[0][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['NV'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l4 = axs[1][0].scatter(df_Center['Temperature'], df_Center['Germane Flow'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[1][0].set_ylim(lowerYLimGermaneFlow, upperYLimGermaneFlow)
+# axs[1][0].set_ylabel("Germane Flow (sccm)")
+#
+# l5 = axs[1][1].scatter(df_Andrew['Temperature'], df_Andrew['Germane Flow'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l6 = axs[1][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Germane Flow'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l7 = axs[2][0].scatter(df_Center['Temperature'], df_Center['Wire Density'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[2][0].set_ylim(lowerYLimWireDensity, upperYLimWireDensity)
+# axs[2][0].set_ylabel("Nanowire Density (μm$^{-2}$)")
+#
+# l8 = axs[2][1].scatter(df_Andrew['Temperature'], df_Andrew['Wire Density'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l9 = axs[2][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Wire Density'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l10 = axs[3][0].scatter(df_Center['Temperature'], df_Center['Average Wire Width (nm)'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[3][0].set_ylim(lowerYLimWireWidth, upperYLimWireWidth)
+# axs[3][0].set_ylabel("Nanowire Width (nm)")
+#
+# l11 = axs[3][1].scatter(df_Andrew['Temperature'], df_Andrew['Average Wire Width (nm)'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l12 = axs[3][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Average Wire Width (nm)'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l13 = axs[4][0].scatter(df_Center['Temperature'], df_Center['Average Wire Length (nm)'], s=circleScaleFactor * df_Center['XRD Sn Content'], c=df_Center[SnSurfaceStr], cmap=centerPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+# axs[4][0].set_ylim(lowerYLimWireLength, upperYLimWireLength)
+# axs[4][0].set_ylabel("Nanowire Length (nm)")
+#
+# l14 = axs[4][1].scatter(df_Andrew['Temperature'], df_Andrew['Average Wire Length (nm)'], s=circleScaleFactor * df_Andrew['XRD Sn Content'], c=df_Andrew[SnSurfaceStr], cmap=andrewPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# l15 = axs[4][2].scatter(df_Reflectometry['Temperature'], df_Reflectometry['Average Wire Length (nm)'], s=circleScaleFactor * df_Reflectometry['XRD Sn Content'], c=df_Reflectometry[SnSurfaceStr], cmap=reflectometryPositionColormap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
+#
+# for axList in axs:
+#     for ax in axList:
+#         ax.set_xlim(lowerXLim + 0.01, upperXLim - 0.01)
+#         ax.minorticks_on()
+#         ax.tick_params(which='both', axis='both', direction='in', top=True, bottom=True, left=True, right=True)
+#         ax.tick_params(which='major', axis='both', direction='in', length=8, width=1)
+#         ax.tick_params(which='minor', axis='both', direction='in', length=4, width=1)
+#         ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+#         ax.yaxis.set_minor_locator(AutoMinorLocator(1))
+#
+# plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+# plt.xlabel("Temperature (°C)")
+# # This would set a centered y label
+# # plt.ylabel("NV")
+#
+# fig.subplots_adjust(right=0.8)
+#
+# # [horizontal position, vertical position, relative width, relative height]
+# colorbar_ax = fig.add_axes([0.83, 0.225, 0.03, 0.3])
+# cbar = fig.colorbar(l1, cax=colorbar_ax)
+# cbar.set_alpha(1)
+# cbar.draw_all()
+# cbar.ax.set_ylabel('Surface Sn Coverage Percent')
+#
+# # [horizontal position, vertical position, relative width, relative height]
+# legend_ax = fig.add_axes([0.85, 0.525, 0.03, 0.3])
+# legend_ax.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+# legend_ax.axis('off')
+# hiddenLegendHandles = []
+# hiddenLegendLabels = []
+# for SnContent in SnContentLegendList:
+#     hiddenLegendPlot = plt.scatter([], [], c='k', alpha=0.8, s=circleScaleFactor * SnContent)
+#     tempHandle, tempLabel = hiddenLegendPlot.legend_elements(prop="sizes")
+#     hiddenLegendHandles.extend(tempHandle)
+#     hiddenLegendLabels.extend(tempLabel)
+#
+# plotLegend = legend_ax.legend(hiddenLegendHandles, SnContentLegendList, title="XRD Sn Content", numpoints=1, scatterpoints=5, frameon=False, labelspacing=3.5, handletextpad=2, borderaxespad=0,
+#                               loc='center', borderpad=2)
+#
+# fig.savefig('GeSnVisualization_RealData_smallerRange.png', facecolor='white', edgecolor='none', dpi=300, format='png')
