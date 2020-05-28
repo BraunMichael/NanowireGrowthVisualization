@@ -23,7 +23,26 @@ def lowerAndUpperLims(columnTitle, percentRangeOverdraw, dataframeList):
     return lowerLim, upperLim
 
 
-def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, colorbarMax=None, showFig=False, saveFig=True, saveName='Visualization', saveFormat='svg'):
+def adjustFigAspect(fig, aspect: float = 1):
+    """
+    Adjust the subplot parameters so that the figure has the correct
+    aspect ratio.
+    """
+    xsize,ysize = fig.get_size_inches()
+    minsize = min(xsize,ysize)
+    xlim = .4*minsize/xsize
+    ylim = .4*minsize/ysize
+    if aspect < 1:
+        xlim *= aspect
+    else:
+        ylim /= aspect
+    fig.subplots_adjust(left=.5-xlim,
+                        right=.5+xlim,
+                        bottom=.5-ylim,
+                        top=.5+ylim)
+
+
+def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, colorbarMax=None, showFig=False, saveFig=True, saveName='Visualization', saveFormat='svg', yLimList=None):
     assert len(yDataHeaderList) == len(yTitlesList), "You must have a title for each header"
     assert len(dataframeList) == len(colorMapList), "You must have a colormap for each dataframe"
     if colorbarMax is None:
@@ -88,6 +107,7 @@ def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, 
     if saveFig:
         fig.savefig(saveName + '.' + saveFormat, facecolor='white', edgecolor='none', format=saveFormat)
     if showFig:
+        # adjustFigAspect(fig, aspect=.3)
         plt.show()
 
 
