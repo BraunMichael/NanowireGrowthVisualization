@@ -148,7 +148,6 @@ plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTit
 dataframeList = [dataframe.dropna(subset=['XRD Measured']) for dataframe in dataframeList]
 plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveName='GeSnVisualization_measXRD')
 
-
 # Only for actually measured XRD and Wire params
 dataframeList = [dataframe.dropna(subset=['Average Wire Width (nm)']) for dataframe in dataframeList]
 yDataHeaderList = ['NV', 'Germane Flow', 'Wire Density', 'Average Wire Width (nm)', 'Average Wire Length (nm)']
