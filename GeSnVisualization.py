@@ -14,7 +14,7 @@ def makeMPLColormap(numColors, rotation, light, hue, colorMapDarkValue):
     return mapMPL
 
 
-def lowerAndUpperLims(columnTitle, percentRangeOverdraw, dataframeList):
+def lowerAndUpperLims(columnTitle, dataframeList, percentRangeOverdraw=0.2):
     colMin = min([dataFrame[columnTitle].min() for dataFrame in dataframeList])
     colMax = max([dataFrame[columnTitle].max() for dataFrame in dataframeList])
     colRange = colMax - colMin
@@ -46,7 +46,7 @@ def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, 
     assert len(yDataHeaderList) == len(yTitlesList), "You must have a title for each header"
     assert len(dataframeList) == len(colorMapList), "You must have a colormap for each dataframe"
     if colorbarMax is None:
-        _, colorbarMax = lowerAndUpperLims(colorColumn, 0, dataframeList)
+        _, colorbarMax = lowerAndUpperLims(colorColumn, dataframeList, 0)
     circleScaleFactor = 500
     plotAlpha = 0.7
     percentRangeOverdraw = 0.2  # add 20% of range on each side for circle's to fit nicely
@@ -65,12 +65,12 @@ def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, 
             aPlot = axs[rowIndex][colIndex].scatter(dataframe[xDataHeader], dataframe[column], s=circleScaleFactor * dataframe[circleSizeColumn], c=dataframe[colorColumn], cmap=colorMap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
             if colIndex == 0:
                 if yLimList is None:
-                    axs[rowIndex][colIndex].set_ylim(lowerAndUpperLims(column, percentRangeOverdraw, dataframeList))
+                    axs[rowIndex][colIndex].set_ylim(lowerAndUpperLims(column, dataframeList, percentRangeOverdraw))
                 else:
-                    axs[rowIndex][colIndex].set_ylim(yLimList[colIndex])
+                    axs[rowIndex][colIndex].set_ylim(yLimList[rowIndex])
                 axs[rowIndex][colIndex].set_ylabel(title)
 
-    lowerXLim, upperXLim = lowerAndUpperLims(xDataHeader, percentRangeOverdraw, dataframeList)
+    lowerXLim, upperXLim = lowerAndUpperLims(xDataHeader, dataframeList, percentRangeOverdraw)
     for axList in axs:
         for ax in axList:
             ax.set_xlim(lowerXLim + 0.01, upperXLim - 0.01)
@@ -165,6 +165,8 @@ colorTitle = 'Surface Sn Coverage Percent'
 
 # Plot all data
 plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveName='GeSnVisualization_inclRandomXRD')
+# Get original yLims
+yLimList = [lowerAndUpperLims(column, dataframeList) for column in yDataHeaderList]
 
 # Only for actually measured XRD
 dataframeList = [dataframe.dropna(subset=['XRD Measured']) for dataframe in dataframeList]
@@ -174,4 +176,7 @@ plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTit
 dataframeList = [dataframe.dropna(subset=['Average Wire Width (nm)']) for dataframe in dataframeList]
 yDataHeaderList = ['NV', 'Germane Flow', 'Wire Density', 'Average Wire Width (nm)', 'Average Wire Length (nm)']
 yTitlesList = ['Needle Valve', 'Germane Flow (sccm)', 'Nanowire Density (μm$^{-2}$)', 'Nanowire Width (nm)', 'Nanowire Length (nm)']
+yLimList.extend([lowerAndUpperLims(column, dataframeList) for column in ['Average Wire Width (nm)', 'Average Wire Length (nm)']])
+# If you want to plot with the same y scales as the first plot with all data use this (yLimList)
+# plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveName='GeSnVisualization_measXRDandWireParams', showFig=True, yLimList=yLimList)
 plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveName='GeSnVisualization_measXRDandWireParams', showFig=True)
