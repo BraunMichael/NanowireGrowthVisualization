@@ -41,6 +41,7 @@ def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, 
     fig.add_subplot(111, frameon=False, facecolor='white')
 
     # Plot everything
+    aPlot = None
     for rowIndex, (column, title) in enumerate(zip(yDataHeaderList, yTitlesList)):
         for colIndex, (dataframe, colorMap) in enumerate(zip(dataframeList, colorMapList)):
             aPlot = axs[rowIndex][colIndex].scatter(dataframe[xDataHeader], dataframe[column], s=circleScaleFactor * dataframe[circleSizeColumn], c=dataframe[colorColumn], cmap=colorMap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
@@ -103,25 +104,19 @@ plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 
-df_original = pd.read_csv('./LatestDataset.csv')
+df = pd.read_csv('./LatestDataset.csv')
 # SnSurfaceStr = 'Sn Surface Coverage'
 SnSurfaceStr = 'Sn Surface Coverage (percent total area)'
 
-df = df_original.copy()
-
-# df = df.drop(columns=['XRD Measured'])
-# # Only for new dataset
 df = df.dropna(subset=[SnSurfaceStr])
-
 df = df.apply(pd.to_numeric, errors='ignore')
 
 # Sort the values by XRD Sn Content in descending order so the smallest Sn content values (circles) get drawn last (on top of everything else)
 # Ties broken by Sn Surface Coverage
 df_resorted = df.sort_values(by=['XRD Sn Content', SnSurfaceStr], kind='mergesort', ascending=False)
 
-# Have a dataframe with numerical values for position if needed (ie some plots can't plot catagorical data)
-df_resorted_sub = df_resorted.replace({'Center': 0, 'Andrew': 1, 'Reflectometry': 2}, inplace=False)
-
+# Have a dataframe with numerical values for position if needed (ie some plots can't plot categorical data)
+# df_resorted_sub = df_resorted.replace({'Center': 0, 'Andrew': 1, 'Reflectometry': 2}, inplace=False)
 
 colorMapDarkValue = 0.15  # (0 makes highest value black, going to 1)
 RedMapMPL = makeMPLColormap(numColors=30, rotation=0.5, light=1, hue=1, colorMapDarkValue=colorMapDarkValue)
@@ -146,22 +141,16 @@ sizeLegendList = [4, 8, 12]  # [4, 8, 12] for Sn content as circle sizes
 colorColumn = SnSurfaceStr
 colorTitle = 'Surface Sn Coverage Percent'
 
+# Plot all data
 plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveName='GeSnVisualization_inclRandomXRD')
 
 # Only for actually measured XRD
-df_Center = df_Center.dropna(subset=['XRD Measured'])
-df_Andrew = df_Andrew.dropna(subset=['XRD Measured'])
-df_Reflectometry = df_Reflectometry.dropna(subset=['XRD Measured'])
-dataframeList = [df_Center, df_Andrew, df_Reflectometry]
+dataframeList = [dataframe.dropna(subset=['XRD Measured']) for dataframe in dataframeList]
 plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveName='GeSnVisualization_measXRD')
 
 
 # Only for actually measured XRD and Wire params
-df_Center = df_Center.dropna(subset=['Average Wire Width (nm)'])
-df_Andrew = df_Andrew.dropna(subset=['Average Wire Width (nm)'])
-df_Reflectometry = df_Reflectometry.dropna(subset=['Average Wire Width (nm)'])
-
-dataframeList = [df_Center, df_Andrew, df_Reflectometry]
+dataframeList = [dataframe.dropna(subset=['Average Wire Width (nm)']) for dataframe in dataframeList]
 yDataHeaderList = ['NV', 'Germane Flow', 'Wire Density', 'Average Wire Width (nm)', 'Average Wire Length (nm)']
 yTitlesList = ['Needle Valve', 'Germane Flow (sccm)', 'Nanowire Density (μm$^{-2}$)', 'Nanowire Width (nm)', 'Nanowire Length (nm)']
 plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, xTitle, circleSizeColumn, sizeLegendList, circleSizeTitle, colorColumn, colorTitle, colorMapList, saveName='GeSnVisualization_measXRDandWireParams', showFig=True)
