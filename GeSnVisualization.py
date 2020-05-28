@@ -55,8 +55,7 @@ def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, 
     fig.set_figwidth(20)
     # fig.set_figheight(30)
     fig.set_figheight(6*len(yDataHeaderList))
-    fig.subplots_adjust(wspace=0)
-    fig.subplots_adjust(hspace=0)
+    fig.subplots_adjust(wspace=0, hspace=0, bottom=0.07, top=0.97)
     fig.add_subplot(111, frameon=False, facecolor='white')
 
     # Plot everything
@@ -65,7 +64,10 @@ def plotVisualization(dataframeList, yDataHeaderList, yTitlesList, xDataHeader, 
         for colIndex, (dataframe, colorMap) in enumerate(zip(dataframeList, colorMapList)):
             aPlot = axs[rowIndex][colIndex].scatter(dataframe[xDataHeader], dataframe[column], s=circleScaleFactor * dataframe[circleSizeColumn], c=dataframe[colorColumn], cmap=colorMap, edgecolors='black', vmin=0, vmax=colorbarMax, alpha=plotAlpha)
             if colIndex == 0:
-                axs[rowIndex][colIndex].set_ylim(lowerAndUpperLims(column, percentRangeOverdraw, dataframeList))
+                if yLimList is None:
+                    axs[rowIndex][colIndex].set_ylim(lowerAndUpperLims(column, percentRangeOverdraw, dataframeList))
+                else:
+                    axs[rowIndex][colIndex].set_ylim(yLimList[colIndex])
                 axs[rowIndex][colIndex].set_ylabel(title)
 
     lowerXLim, upperXLim = lowerAndUpperLims(xDataHeader, percentRangeOverdraw, dataframeList)
